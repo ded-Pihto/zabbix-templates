@@ -1,0 +1,772 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    -
+      uuid: 748ad4d098d447d492bb935c907f652f
+      name: Templates/Databases
+  templates:
+    -
+      uuid: e3493d714d0b4c0bb157f1cd3e984c8a
+      template: 'Oracle ASM'
+      name: 'Oracle ASM'
+      description: |
+        Use special custom scripts for Zabbix Agent
+        
+        by D.Khenkin
+      groups:
+        -
+          name: Templates/Databases
+      items:
+        -
+          uuid: b98f993bd33a4741bc5991ccd5df8971
+          name: OracleASM(free)
+          key: custom.vfs.asm.free
+          delay: 60m
+          description: 'Free space in +ASM'
+          preprocessing:
+            -
+              type: MULTIPLIER
+              parameters:
+                - '1000'
+            -
+              type: MULTIPLIER
+              parameters:
+                - '1000'
+          request_method: POST
+          tags:
+            -
+              tag: Application
+              value: 'FS OracleASM'
+        -
+          uuid: 11e5a084173b4f10bda0a18bf96d2583
+          name: OracleASM(free).percentage
+          key: custom.vfs.asm.pfree
+          delay: 60m
+          value_type: FLOAT
+          description: 'Free space in +ASM at percent'
+          request_method: POST
+          tags:
+            -
+              tag: Application
+              value: 'FS OracleASM'
+          triggers:
+            -
+              uuid: a4bd82e22fc04eaab8c94028104b6cda
+              expression: 'last(/Oracle ASM/custom.vfs.asm.pfree)<{$ASMMINIMAL}'
+              name: 'Free space is less than {$ASMMINIMAL}% on ASM'
+              priority: HIGH
+              description: 'Alert if free space on +ASM less the 1%'
+              manual_close: 'YES'
+              tags:
+                -
+                  tag: Database
+                  value: Oracle
+        -
+          uuid: a85fc30922b4482a86b9445c67dd97c4
+          name: 'IO OracleASM Read'
+          key: custom.vfs.asm.read
+          delay: 5s
+          value_type: FLOAT
+          units: b/s
+          description: 'Oracle ASM+ read'
+          preprocessing:
+            -
+              type: CHANGE_PER_SECOND
+              parameters:
+                - ''
+          request_method: POST
+          tags:
+            -
+              tag: Application
+              value: 'FS OracleASM'
+        -
+          uuid: 2883b0d8850244d4a8968df4393b8259
+          name: OracleASM(reserv)
+          key: custom.vfs.asm.reserv
+          delay: 6h
+          units: b
+          description: 'Total space in +ASM with candidate'
+          preprocessing:
+            -
+              type: MULTIPLIER
+              parameters:
+                - '1024'
+            -
+              type: MULTIPLIER
+              parameters:
+                - '1024'
+          request_method: POST
+          tags:
+            -
+              tag: Application
+              value: 'FS OracleASM'
+        -
+          uuid: 7c5d4e046cd4454c8369616fc937d08c
+          name: OracleASM(total)
+          key: custom.vfs.asm.total
+          delay: 6h
+          description: 'Total space in +ASM'
+          preprocessing:
+            -
+              type: MULTIPLIER
+              parameters:
+                - '1000'
+            -
+              type: MULTIPLIER
+              parameters:
+                - '1000'
+          request_method: POST
+          tags:
+            -
+              tag: Application
+              value: 'FS OracleASM'
+        -
+          uuid: 453b998f83114661b87ed95111658cb5
+          name: OracleASM(used)
+          key: custom.vfs.asm.used
+          delay: 60m
+          description: 'Used space in +ASM'
+          preprocessing:
+            -
+              type: MULTIPLIER
+              parameters:
+                - '1000'
+            -
+              type: MULTIPLIER
+              parameters:
+                - '1000'
+          request_method: POST
+          tags:
+            -
+              tag: Application
+              value: 'FS OracleASM'
+        -
+          uuid: b3b2da8c002a4f60943b21151e2781ed
+          name: 'IO OracleASM Write'
+          key: custom.vfs.asm.write
+          delay: 5s
+          value_type: FLOAT
+          units: b/s
+          description: 'Oracle ASM+ write'
+          preprocessing:
+            -
+              type: CHANGE_PER_SECOND
+              parameters:
+                - ''
+          request_method: POST
+          tags:
+            -
+              tag: Application
+              value: 'FS OracleASM'
+      discovery_rules:
+        -
+          uuid: e21756f43c39470e8a741fe90a9f1947
+          name: ASM_Groups
+          key: custom.vfs.asm.query
+          delay: 6h
+          lifetime: 10d
+          item_prototypes:
+            -
+              uuid: 2b518475d6f04cbfa5af2a8cf788d915
+              name: '{#ASM_GROUP} OracleASM(free)'
+              key: 'custom.vfs.asm.free[{#ASM_GROUP}]'
+              units: b
+              preprocessing:
+                -
+                  type: MULTIPLIER
+                  parameters:
+                    - '1000'
+                -
+                  type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              tags:
+                -
+                  tag: Application
+                  value: 'FS OracleASM'
+            -
+              uuid: 291837a64f184f688a15d6a272dd0a64
+              name: '{#ASM_GROUP} OracleASM(free).percentage'
+              key: 'custom.vfs.asm.pfree[{#ASM_GROUP}]'
+              value_type: FLOAT
+              tags:
+                -
+                  tag: Application
+                  value: 'FS OracleASM'
+              trigger_prototypes:
+                -
+                  uuid: 1cbca96cbe274dd4846f1bbe6103a5b7
+                  expression: 'last(/Oracle ASM/custom.vfs.asm.pfree[{#ASM_GROUP}])<{$ASMMINIMAL}'
+                  name: '{#ASM_GROUP} Free space is less than {$ASMMINIMAL}% on ASM'
+                  priority: HIGH
+                  description: |
+                    Alert if free space on +ASM GROUP less the value in {$ASMMINIMAL} %
+                    ( default 1% )
+                  manual_close: 'YES'
+            -
+              uuid: 94879e3ade5f4e4b90c1abc30e7edf9f
+              name: '{#ASM_GROUP} IO OracleASM Read'
+              key: 'custom.vfs.asm.read[{#ASM_GROUP}]'
+              delay: 5s
+              value_type: FLOAT
+              units: b/s
+              description: 'Oracle ASM+ read'
+              preprocessing:
+                -
+                  type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              tags:
+                -
+                  tag: Application
+                  value: 'FS OracleASM'
+            -
+              uuid: 144c313fa60848e3b32b2809c1e94289
+              name: '{#ASM_GROUP} OracleASM(total)'
+              key: 'custom.vfs.asm.total[{#ASM_GROUP}]'
+              units: b
+              preprocessing:
+                -
+                  type: MULTIPLIER
+                  parameters:
+                    - '1000'
+                -
+                  type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              tags:
+                -
+                  tag: Application
+                  value: 'FS OracleASM'
+            -
+              uuid: d8b66336869e49bfa0544795781da2e1
+              name: '{#ASM_GROUP} OracleASM(used)'
+              key: 'custom.vfs.asm.used[{#ASM_GROUP}]'
+              units: b
+              preprocessing:
+                -
+                  type: MULTIPLIER
+                  parameters:
+                    - '1000'
+                -
+                  type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              tags:
+                -
+                  tag: Application
+                  value: 'FS OracleASM'
+            -
+              uuid: 117d344508a44007a65a457f55bd5468
+              name: '{#ASM_GROUP} IO OracleASM Write'
+              key: 'custom.vfs.asm.write[{#ASM_GROUP}]'
+              delay: 5s
+              value_type: FLOAT
+              units: b/s
+              description: 'Oracle ASM+ read'
+              preprocessing:
+                -
+                  type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              tags:
+                -
+                  tag: Application
+                  value: 'FS OracleASM'
+          graph_prototypes:
+            -
+              uuid: 87806488ccd447a5a03d57f6432a0062
+              name: '{#ASM_GROUP} IO OracleASM Read/Write'
+              graph_items:
+                -
+                  sortorder: '1'
+                  color: 1A7C11
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.read[{#ASM_GROUP}]'
+                -
+                  sortorder: '2'
+                  color: F63100
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.write[{#ASM_GROUP}]'
+            -
+              uuid: 4da650d59fc8428b83c6f1716774aa2c
+              name: '{#ASM_GROUP} TotalSpace(ASM)'
+              graph_items:
+                -
+                  sortorder: '1'
+                  color: 1A7C11
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.free[{#ASM_GROUP}]'
+                -
+                  sortorder: '2'
+                  color: F63100
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.used[{#ASM_GROUP}]'
+                -
+                  sortorder: '3'
+                  color: 2774A4
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.total[{#ASM_GROUP}]'
+                -
+                  sortorder: '4'
+                  color: 090C0E
+                  item:
+                    host: 'Oracle ASM'
+                    key: custom.vfs.asm.reserv
+            -
+              uuid: fd215e5e9c2541efa8f5fd926c09c21f
+              name: '{#ASM_GROUP} TotalSpace(ASM)%'
+              graph_items:
+                -
+                  sortorder: '1'
+                  color: 1A7C11
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.pfree[{#ASM_GROUP}]'
+      tags:
+        -
+          tag: class
+          value: database
+        -
+          tag: hostname
+          value: '{HOST.NAME}'
+        -
+          tag: target
+          value: oracle
+      macros:
+        -
+          macro: '{$ADDCONF}'
+          value: oracle
+          description: 'for install additional config to remote host'
+        -
+          macro: '{$ASMMINIMAL}'
+          value: '1'
+          description: 'percentage of free on ASM GROUP'
+      dashboards:
+        -
+          uuid: 9a72a08421f0411193016752cd8ef010
+          name: 'ASM storage'
+          pages:
+            -
+              widgets:
+                -
+                  type: graphprototype
+                  width: '16'
+                  height: '5'
+                  fields:
+                    -
+                      type: INTEGER
+                      name: columns
+                      value: '1'
+                    -
+                      type: GRAPH_PROTOTYPE
+                      name: graphid
+                      value:
+                        host: 'Oracle ASM'
+                        name: '{#ASM_GROUP} TotalSpace(ASM)'
+                -
+                  type: graphprototype
+                  'y': '5'
+                  width: '16'
+                  height: '5'
+                  fields:
+                    -
+                      type: INTEGER
+                      name: columns
+                      value: '1'
+                    -
+                      type: GRAPH_PROTOTYPE
+                      name: graphid
+                      value:
+                        host: 'Oracle ASM'
+                        name: '{#ASM_GROUP} IO OracleASM Read/Write'
+    -
+      uuid: 30162ed78b6c40f7b1411f2fc440c24f
+      template: 'Oracle Database'
+      name: 'Oracle Database'
+      description: |
+        Use special custom scripts for Zabbix Agent
+        
+        by D.Khenkin
+      groups:
+        -
+          name: Templates/Databases
+      items:
+        -
+          uuid: f582764da15a42d6ba7726a93b5e3a29
+          name: 'Oracle status'
+          type: SIMPLE
+          key: 'net.tcp.service[tcp,,1521]'
+          delay: 30s
+          valuemap:
+            name: 'Host availability'
+          request_method: POST
+          tags:
+            -
+              tag: Application
+              value: OracleDB
+          triggers:
+            -
+              uuid: ff106604423947c1a5fda3a37bfcc94e
+              expression: 'sum(/Oracle Database/net.tcp.service[tcp,,1521],#20)<1'
+              name: 'Oracle is down'
+              priority: DISASTER
+              manual_close: 'YES'
+              tags:
+                -
+                  tag: Database
+                  value: Oracle
+      discovery_rules:
+        -
+          uuid: 08e8c657363c46f3bd454062257f831a
+          name: 'OracleSID&Tablespace'
+          key: custom.orasid.query
+          delay: 6h
+          lifetime: 5d
+          item_prototypes:
+            -
+              uuid: 4b09f09236934c06b6277362783d85c2
+              name: 'OraclePrimaryStatus {#SID_PRIMARY_NAME}'
+              key: 'custom.oraprim.check[{#SID_PRIMARY_NAME}]'
+              units: min
+              valuemap:
+                name: 'status DB'
+              tags:
+                -
+                  tag: Application
+                  value: OraStandby
+              trigger_prototypes:
+                -
+                  uuid: d9269b9c2bba4a68a4a99b397eefcadb
+                  expression: 'last(/Oracle Database/custom.oraprim.check[{#SID_PRIMARY_NAME}])<>3'
+                  name: 'OracleDB {#SID_PRIMARY_NAME} not OPEN'
+                  event_name: 'OracleDB {#SID_PRIMARY_NAME} not OPEN'
+                  opdata: 'last status {ITEM.LASTVALUE1}'
+                  priority: DISASTER
+                  manual_close: 'YES'
+            -
+              uuid: 8c8bbe3bfc03457480e3e7b3b834d9da
+              name: 'OraclePrimaryTbsFree( {#SID_TBSNAME} )'
+              key: 'custom.oraprimtbs.free[{#SID_TBSNAME}]'
+              units: b
+              preprocessing:
+                -
+                  type: MULTIPLIER
+                  parameters:
+                    - '1000'
+                -
+                  type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              tags:
+                -
+                  tag: Application
+                  value: OraPrimary
+            -
+              uuid: f300279f60124633ae4a82bbcf60cd92
+              name: 'OraclePrimaryTbsTotal( {#SID_TBSNAME} )'
+              key: 'custom.oraprimtbs.total[{#SID_TBSNAME}]'
+              units: b
+              preprocessing:
+                -
+                  type: MULTIPLIER
+                  parameters:
+                    - '1000'
+                -
+                  type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              tags:
+                -
+                  tag: Application
+                  value: OraPrimary
+            -
+              uuid: d9ded9ed214f49a2befba89b3a3cc01f
+              name: 'OraclePrimaryTbsUsed( {#SID_TBSNAME} )'
+              key: 'custom.oraprimtbs.used[{#SID_TBSNAME}]'
+              units: b
+              preprocessing:
+                -
+                  type: MULTIPLIER
+                  parameters:
+                    - '1000'
+                -
+                  type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              tags:
+                -
+                  tag: Application
+                  value: OraPrimary
+            -
+              uuid: 2c0298d5bcf648ab83754a51cabce125
+              name: 'OracleStndByCheck( {#SID_STDBY_NAME} )'
+              key: 'custom.orastndby.check[{#SID_STDBY_NAME}]'
+              tags:
+                -
+                  tag: Application
+                  value: OraStandby
+              trigger_prototypes:
+                -
+                  uuid: 89af8c26e3b34a0b9e76d60d81f62f7a
+                  expression: 'last(/Oracle Database/custom.orastndby.check[{#SID_STDBY_NAME}])=0'
+                  name: 'Oracle StndBy-DB no apply ( {#SID_STDBY_NAME} )'
+                  priority: DISASTER
+                  manual_close: 'YES'
+            -
+              uuid: 9d37418ada74476c8247188407cb0fb7
+              name: 'OracleStndByDelay( {#SID_STDBY_NAME} )'
+              key: 'custom.orastndby.delay[{#SID_STDBY_NAME}]'
+              units: min
+              tags:
+                -
+                  tag: Application
+                  value: OraStandby
+              trigger_prototypes:
+                -
+                  uuid: e073d2296cbd4a5a9d4cce6e261d4a60
+                  expression: 'last(/Oracle Database/custom.orastndby.delay[{#SID_STDBY_NAME}])>600'
+                  name: 'Oracle StndBy-DB delay ( {#SID_STDBY_NAME} ) > 10h'
+                  opdata: '{ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  manual_close: 'YES'
+                  dependencies:
+                    -
+                      name: 'Oracle StndBy-DB no apply ( {#SID_STDBY_NAME} )'
+                      expression: 'last(/Oracle Database/custom.orastndby.check[{#SID_STDBY_NAME}])=0'
+          trigger_prototypes:
+            -
+              uuid: 37ad7f2637cd4c1a92739959dc0b712e
+              expression: 'last(/Oracle Database/custom.oraprimtbs.free[{#SID_TBSNAME}])*100/last(/Oracle Database/custom.oraprimtbs.total[{#SID_TBSNAME}])<{$ORA.TBS.MINIMAL:"{#SID_TBSNAME}"}'
+              name: 'Free space is less than {$ORA.TBS.MINIMAL:"{#SID_TBSNAME}"}% on {#SID_TBSNAME}'
+              opdata: '{ITEM.LASTVALUE1} / {ITEM.LASTVALUE2}'
+              priority: AVERAGE
+              manual_close: 'YES'
+              tags:
+                -
+                  tag: Database
+                  value: Oracle
+          graph_prototypes:
+            -
+              uuid: 2c6256b633874e0d92de14232309734c
+              name: 'Oracle StndBy-DB no apply ( {#SID_STDBY_NAME} )'
+              graph_items:
+                -
+                  sortorder: '1'
+                  color: FF0000
+                  item:
+                    host: 'Oracle Database'
+                    key: 'custom.orastndby.delay[{#SID_STDBY_NAME}]'
+            -
+              uuid: c3bdd5dfef6d4a0088b57d39745a5bfa
+              name: 'OraPrimTablespace free( {#SID_TBSNAME} )'
+              graph_items:
+                -
+                  sortorder: '1'
+                  color: 1A7C11
+                  item:
+                    host: 'Oracle Database'
+                    key: 'custom.oraprimtbs.free[{#SID_TBSNAME}]'
+            -
+              uuid: ca7ff47e66214138b64260f74f0f88df
+              name: 'OraPrimTablespace usage( {#SID_TBSNAME} )'
+              ymin_type_1: FIXED
+              graph_items:
+                -
+                  sortorder: '1'
+                  color: FF0000
+                  item:
+                    host: 'Oracle Database'
+                    key: 'custom.oraprimtbs.used[{#SID_TBSNAME}]'
+                -
+                  sortorder: '2'
+                  color: 4CAF50
+                  item:
+                    host: 'Oracle Database'
+                    key: 'custom.oraprimtbs.free[{#SID_TBSNAME}]'
+                -
+                  sortorder: '3'
+                  color: '000000'
+                  item:
+                    host: 'Oracle Database'
+                    key: 'custom.oraprimtbs.total[{#SID_TBSNAME}]'
+      tags:
+        -
+          tag: class
+          value: database
+        -
+          tag: group
+          value: B2
+        -
+          tag: hostname
+          value: '{HOST.NAME}'
+        -
+          tag: target
+          value: oracle
+      macros:
+        -
+          macro: '{$ADDCONF}'
+          value: oracle
+          description: 'for install additional config to remote host'
+        -
+          macro: '{$ORA.TBS.MINIMAL}'
+          value: '1'
+          description: 'minimal % free tablespase'
+      dashboards:
+        -
+          uuid: a583565d3c384caa830817fe8e7a7dfe
+          name: 'Oracle Tabespace'
+          pages:
+            -
+              widgets:
+                -
+                  type: graphprototype
+                  'y': '9'
+                  width: '22'
+                  height: '7'
+                  fields:
+                    -
+                      type: INTEGER
+                      name: columns
+                      value: '1'
+                    -
+                      type: INTEGER
+                      name: source_type
+                      value: '3'
+                    -
+                      type: ITEM_PROTOTYPE
+                      name: itemid
+                      value:
+                        host: 'Oracle Database'
+                        key: 'custom.oraprim.check[{#SID_PRIMARY_NAME}]'
+                -
+                  type: graphprototype
+                  'y': '16'
+                  width: '22'
+                  height: '6'
+                  fields:
+                    -
+                      type: INTEGER
+                      name: columns
+                      value: '1'
+                    -
+                      type: INTEGER
+                      name: source_type
+                      value: '3'
+                    -
+                      type: ITEM_PROTOTYPE
+                      name: itemid
+                      value:
+                        host: 'Oracle Database'
+                        key: 'custom.orastndby.delay[{#SID_STDBY_NAME}]'
+                -
+                  type: graphprototype
+                  width: '22'
+                  height: '9'
+                  fields:
+                    -
+                      type: INTEGER
+                      name: columns
+                      value: '1'
+                    -
+                      type: GRAPH_PROTOTYPE
+                      name: graphid
+                      value:
+                        host: 'Oracle Database'
+                        name: 'OraPrimTablespace usage( {#SID_TBSNAME} )'
+      valuemaps:
+        -
+          uuid: 389fef9312ee4fbd876d91f07b2bd261
+          name: 'Host availability'
+          mappings:
+            -
+              value: '0'
+              newvalue: 'not available'
+            -
+              value: '1'
+              newvalue: available
+            -
+              value: '2'
+              newvalue: unknown
+        -
+          uuid: 5b25d61dc5ab4bcbbb9f2e8ff32ff794
+          name: 'status DB'
+          mappings:
+            -
+              value: '0'
+              newvalue: Down
+            -
+              value: '1'
+              newvalue: 'No mount'
+            -
+              value: '2'
+              newvalue: Mount
+            -
+              value: '3'
+              newvalue: Open
+  graphs:
+    -
+      uuid: 171d7d3e0de7432182c27711ec2f64bd
+      name: 'IO OracleASM Read/Write'
+      show_triggers: 'NO'
+      graph_items:
+        -
+          color: 1A7C11
+          calc_fnc: ALL
+          item:
+            host: 'Oracle ASM'
+            key: custom.vfs.asm.read
+        -
+          sortorder: '1'
+          color: F63100
+          calc_fnc: ALL
+          item:
+            host: 'Oracle ASM'
+            key: custom.vfs.asm.write
+    -
+      uuid: 3a702ce908034bfc9f0bb9e519ea4ee0
+      name: TotalSpace(ASM)
+      graph_items:
+        -
+          color: 1A7C11
+          calc_fnc: ALL
+          item:
+            host: 'Oracle ASM'
+            key: custom.vfs.asm.free
+        -
+          sortorder: '1'
+          color: BB0000
+          calc_fnc: ALL
+          item:
+            host: 'Oracle ASM'
+            key: custom.vfs.asm.used
+        -
+          sortorder: '2'
+          color: '888800'
+          calc_fnc: ALL
+          item:
+            host: 'Oracle ASM'
+            key: custom.vfs.asm.total
+        -
+          sortorder: '3'
+          color: '000000'
+          calc_fnc: ALL
+          item:
+            host: 'Oracle ASM'
+            key: custom.vfs.asm.reserv
+    -
+      uuid: 5eee47fcf5ea475cb4354565df691665
+      name: TotalSpace(ASM)%
+      ymin_type_1: FIXED
+      graph_items:
+        -
+          color: 1A7C11
+          calc_fnc: ALL
+          item:
+            host: 'Oracle ASM'
+            key: custom.vfs.asm.pfree
