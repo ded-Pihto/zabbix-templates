@@ -1,0 +1,79 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    -
+      uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+  templates:
+    -
+      uuid: 1b8680079ed14264b601db20f1278149
+      template: 'DomainDelegation Expires'
+      name: 'DomainDelegation Expires'
+      groups:
+        -
+          name: Templates/Applications
+      discovery_rules:
+        -
+          uuid: b6f7833262f049268114cca5462ca45d
+          name: 'Discovering Domain Name'
+          key: 'domain.discovery[ "{$DOMAINLIST}" ]'
+          item_prototypes:
+            -
+              uuid: 403bc63abadf4e8d90704d3c7cc04b9f
+              name: 'check domain: {#DOMAIN}'
+              key: 'domain.expire[{#DOMAIN}]'
+              delay: 1d
+              trigger_prototypes:
+                -
+                  uuid: 8d19ad0213624af0b34e34dc21c33fa8
+                  expression: 'last(/DomainDelegation Expires/domain.expire[{#DOMAIN}])<1'
+                  name: 'check domain: {#DOMAIN}'
+                  event_name: 'Domain name "{#DOMAIN}" was expired'
+                  opdata: '{ITEM.LASTVALUE1}'
+                  priority: DISASTER
+                  manual_close: 'YES'
+                  tags:
+                    -
+                      tag: scope
+                      value: 'domain name'
+                -
+                  uuid: fa2c11daf931474f9c184bc1074fb6a9
+                  expression: 'last(/DomainDelegation Expires/domain.expire[{#DOMAIN}])<10'
+                  name: 'check domain: {#DOMAIN} ( 10 day )'
+                  event_name: 'Domain name "{#DOMAIN}" expires in less than 10 days ({ITEM.LASTVALUE1} days remaining)'
+                  opdata: '{ITEM.LASTVALUE1}'
+                  priority: DISASTER
+                  manual_close: 'YES'
+                  dependencies:
+                    -
+                      name: 'check domain: {#DOMAIN}'
+                      expression: 'last(/DomainDelegation Expires/domain.expire[{#DOMAIN}])<1'
+                  tags:
+                    -
+                      tag: scope
+                      value: 'domain name'
+                -
+                  uuid: 2bdb6f6210694492ab5ca10bef88f8d1
+                  expression: 'last(/DomainDelegation Expires/domain.expire[{#DOMAIN}])<30'
+                  name: 'check domain: {#DOMAIN} ( 30 day )'
+                  event_name: 'Domain name "{#DOMAIN}" expires in less than 30 days ({ITEM.LASTVALUE1} days remaining)'
+                  opdata: '{ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  manual_close: 'YES'
+                  dependencies:
+                    -
+                      name: 'check domain: {#DOMAIN} ( 10 day )'
+                      expression: 'last(/DomainDelegation Expires/domain.expire[{#DOMAIN}])<10'
+                  tags:
+                    -
+                      tag: scope
+                      value: 'domain name'
+      macros:
+        -
+          macro: '{$ADDCONF}'
+          value: FQDNleft
+          description: 'for install additional config to remote host'
+        -
+          macro: '{$DOMAINLIST}'
+          value: 'domain1,domain2,domain3'
+          description: 'List for domains for check, separate by ","'
