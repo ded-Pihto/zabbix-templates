@@ -1,3 +1,4 @@
+Use template with SAP based Linux or other OS that use bash as shell.
 Template use LLD technology for discovery all SAP's processes and create item and triggers for 
 monitoring of availability them.
 
