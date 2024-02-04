@@ -4,33 +4,70 @@ zabbix_export:
     - uuid: 545fb605755e482ca08244d432a4d4d0
       name: SAP
   templates:
-    - uuid: e32fe0b131a640b187399ff5b47153d0
+    - uuid: ecafe44dbc8d4679b25f947818413f8e
       template: 'SAP APP monitoring'
       name: 'SAP APP monitoring'
+      description: |
+        Status return of all SAP process.
+        Alert will created for processes in non 'green' status.
+        
+        Use sapcontrol utility for get status of processes
       groups:
         - name: SAP
+      items:
+        - uuid: b79283269cef4424bdc0574c4728c389
+          name: 'SAP Process Get data'
+          key: custom.sap.getdata
+          trends: '0'
+          value_type: TEXT
       discovery_rules:
-        - uuid: c401ef982f3147c98a23ebb81cd2ebb8
+        - uuid: c69cd948c2024af8a45e513cec18df65
           name: 'Discovery SAP services'
-          key: 'custom.sap.control[discovery]'
-          delay: 1h
-          lifetime: 1d
+          type: DEPENDENT
+          key: discovery_sap
+          delay: '0'
           item_prototypes:
-            - uuid: e93f09d4ca4246b9936b706810b6b8b2
-              name: '[ {#ICOD}-{#INAME} ] {#SDESC}'
-              key: 'custom.sap.control[{#SDESC},{#ICOD},{#INAME}]'
+            - uuid: b46dc5bc4e3a4c98bea9b2dc25fb7582
+              name: '[ {#ICOD}-{#INAME} ] {#PDESC}'
+              type: DEPENDENT
+              key: 'sap_service[ {#ICOD} , {#INAME} , {#PDESC} ]'
+              delay: '0'
+              description: 'Return status of SAP process {#PDESC} instance {#ICOD} ( {#INAME} )'
               valuemap:
                 name: Status
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.data[?(@.INDEX == "{#ICOD}{#INAME}{#PNAME}" ) ].STATUS.first()'
+                - type: STR_REPLACE
+                  parameters:
+                    - GRAY
+                    - '0'
+                - type: STR_REPLACE
+                  parameters:
+                    - YELLOW
+                    - '1'
+                - type: STR_REPLACE
+                  parameters:
+                    - GREEN
+                    - '2'
+              master_item:
+                key: custom.sap.getdata
               tags:
                 - tag: application
                   value: SAP
               trigger_prototypes:
-                - uuid: 7fdc6b9ddbc748068789f7a98621fb3f
-                  expression: 'last(/SAP APP monitoring/custom.sap.control[{#SDESC},{#ICOD},{#INAME}])=0'
-                  name: '[ {#ICOD}-{#INAME} ] {#SDESC} not GREEN'
+                - uuid: 85a5601b4ff14da0845a133131ac7bc4
+                  expression: 'last(/SAP APP monitoring/sap_service[ {#ICOD} , {#INAME} , {#PDESC} ])<>2'
+                  name: 'SAP process status [ {#ICOD}-{#INAME} ] {#PDESC} not GREEN'
+                  priority: HIGH
                   tags:
                     - tag: application
                       value: SAP
+                    - tag: target
+                      value: status
+          master_item:
+            key: custom.sap.getdata
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -39,10 +76,12 @@ zabbix_export:
         - tag: application
           value: SAP
       valuemaps:
-        - uuid: 4a99f85bd0ec4c718a75890da28eeabd
+        - uuid: 666ddfbf1fb54b78afe946246e233add
           name: Status
           mappings:
             - value: '0'
-              newvalue: Down
+              newvalue: Gray
             - value: '1'
-              newvalue: Up
+              newvalue: Yellow
+            - value: '2'
+              newvalue: Green
