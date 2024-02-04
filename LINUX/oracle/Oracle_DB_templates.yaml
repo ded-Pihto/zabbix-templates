@@ -1,0 +1,885 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: 748ad4d098d447d492bb935c907f652f
+      name: Templates/Databases
+  templates:
+    - uuid: 3df7879f972a482ab422b8fab24bf2cb
+      template: 'Oracle Database'
+      name: 'Oracle Database'
+      description: |
+        Use special custom scripts for Zabbix Agent
+        
+        by D.Khenkin
+      groups:
+        - name: Templates/Databases
+      items:
+        - uuid: 35a04e01bf4a465cb9dfce32a048b157
+          name: 'Oracle status'
+          type: SIMPLE
+          key: 'net.tcp.service[tcp, ,1521]'
+          delay: 30s
+          valuemap:
+            name: 'service availability'
+          tags:
+            - tag: application
+              value: oracleDB
+          triggers:
+            - uuid: 36cb91ae0dcb47069d718b3958588b15
+              expression: 'sum(/Oracle Database/net.tcp.service[tcp, ,1521],#20)<1'
+              name: 'Oracle is down'
+              status: DISABLED
+              priority: DISASTER
+              manual_close: 'YES'
+              tags:
+                - tag: Database
+                  value: Oracle
+        - uuid: c02d3268f18d43dd8dc537d46098d743
+          name: 'OracleDB Query'
+          type: ZABBIX_ACTIVE
+          key: ora.query
+          delay: 5m
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: 'Get instances list'
+          tags:
+            - tag: application
+              value: oracleDB
+        - uuid: 4a24ce43cde14080836954b2efdd48c3
+          name: 'OracleDB get archlog destination info'
+          type: ZABBIX_ACTIVE
+          key: 'ora.query[ get_destination_info ]'
+          delay: 5m
+          history: 1d
+          trends: '0'
+          value_type: TEXT
+          description: 'Get informations about archivelog destination'
+          tags:
+            - tag: application
+              value: oracleDB
+        - uuid: 696dc88a2ef842159d9cd421cb7200b7
+          name: 'OracleDB get instances info'
+          type: ZABBIX_ACTIVE
+          key: 'ora.query[ get_instances_info ]'
+          delay: 5m
+          history: 1d
+          trends: '0'
+          value_type: TEXT
+          description: 'Get instances informations'
+          tags:
+            - tag: application
+              value: oracleDB
+        - uuid: 0d1e4d8e79c84f4bbc94160a42ca7dc1
+          name: 'OracleDB get FRA info'
+          type: ZABBIX_ACTIVE
+          key: 'ora.query[ get_recovery_info ]'
+          history: 1d
+          trends: '0'
+          value_type: TEXT
+          description: 'Get FRA information for instances'
+          tags:
+            - tag: application
+              value: oracleDB
+        - uuid: b26342f98be1464393b4653863a6e15c
+          name: 'OracleDB get tablespace info'
+          type: ZABBIX_ACTIVE
+          key: 'ora.query[ get_tablespaces_statistic ]'
+          delay: 5m
+          history: 1d
+          trends: '0'
+          value_type: TEXT
+          description: 'Get tablespaces informations'
+          tags:
+            - tag: application
+              value: oracleDB
+      discovery_rules:
+        - uuid: ac3b859ca879498fa89375f5b85d9ed4
+          name: OraDiscoverDB
+          type: DEPENDENT
+          key: OraDiscoverDB
+          delay: '0'
+          lifetime: 1d
+          item_prototypes:
+            - uuid: 96d1e2a4bfc944d6be821e61aa2a81dc
+              name: 'Oracle DB Mode ( {#SID} )'
+              type: DEPENDENT
+              key: 'OracleDBMode[ {#SID} ]'
+              delay: '0'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )].info[:].openmode.first()'
+              master_item:
+                key: 'ora.query[ get_instances_info ]'
+              tags:
+                - tag: application
+                  value: oracleDB
+                - tag: instance
+                  value: '{#SID}'
+            - uuid: 3620e21f20b44ecb98eafd54298902fa
+              name: 'Oracle DB Role ( {#SID} )'
+              type: DEPENDENT
+              key: 'OracleDBRole[ {#SID} ]'
+              delay: '0'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )].info[:].role.first()'
+              master_item:
+                key: 'ora.query[ get_instances_info ]'
+              tags:
+                - tag: application
+                  value: oracleDB
+                - tag: instance
+                  value: '{#SID}'
+            - uuid: 67df370e22f847db91bb9fbbcd7525e7
+              name: 'Oracle DB Status ( {#SID} )'
+              type: DEPENDENT
+              key: 'OracleDBStatus[ {#SID} ]'
+              delay: '0'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )].info[:].status.first()'
+              master_item:
+                key: 'ora.query[ get_instances_info ]'
+              tags:
+                - tag: application
+                  value: oracleDB
+                - tag: instance
+                  value: '{#SID}'
+              trigger_prototypes:
+                - uuid: 771be090cc5945faabea0ba41ad6c463
+                  expression: 'last(/Oracle Database/OracleDBStatus[ {#SID} ])="NOT STARTED"'
+                  name: 'Oracle: Instance {#SID} not started'
+                  priority: HIGH
+                  manual_close: 'YES'
+          trigger_prototypes:
+            - uuid: 304d5dd802574a4283f32c75feab0346
+              expression: 'last(/Oracle Database/OracleDBStatus[ {#SID} ])<>"OPEN" and last(/Oracle Database/OracleDBRole[ {#SID} ])="Primary"'
+              name: 'Oracle: Primary instance {#SID} not open'
+              priority: HIGH
+              manual_close: 'YES'
+            - uuid: 5a0ccf47fa02490da847719ccf91822b
+              expression: 'last(/Oracle Database/OracleDBStatus[ {#SID} ])<>"OPEN" and last(/Oracle Database/OracleDBRole[ {#SID} ])="Physical Standby"'
+              name: 'Oracle: Standby instance {#SID} not open'
+              priority: WARNING
+              manual_close: 'YES'
+          master_item:
+            key: ora.query
+          lld_macro_paths:
+            - lld_macro: '{#SID}'
+              path: $.INSTANCE
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.data[:]'
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '[]'
+        - uuid: b7bcf9f0ebce420b91140d302a8c2c88
+          name: OraDiscoverPhysicalStndby
+          type: DEPENDENT
+          key: OraDiscoverPhysicalStndby
+          delay: '0'
+          lifetime: 1d
+          item_prototypes:
+            - uuid: 3f203d0341b14d2f8ac30cb5db0879ef
+              name: 'Oracle Physical Standby ApplyStatus ( {#SID} )'
+              type: DEPENDENT
+              key: 'OraclePhysicalStandbyApplyStatus[ {#SID} ]'
+              delay: '0'
+              valuemap:
+                name: 'status apply'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )]..apply.first()'
+              master_item:
+                key: 'ora.query[ get_tablespaces_statistic ]'
+              tags:
+                - tag: application
+                  value: oracleDB
+                - tag: instance
+                  value: '{#SID}'
+                - tag: oracle
+                  value: standby
+              trigger_prototypes:
+                - uuid: e61219e2db484e078c02bf6d7be42d87
+                  expression: 'last(/Oracle Database/OraclePhysicalStandbyApplyStatus[ {#SID} ])=0'
+                  name: 'Oracle StndBy-DB no apply ( {#SID} )'
+                  priority: HIGH
+            - uuid: ce0788d9a8a7404f8d7e57438e9f2641
+              name: 'Oracle Physical Standby Delay ( {#SID} )'
+              type: DEPENDENT
+              key: 'OraclePhysicalStandbyDelay[ {#SID} ]'
+              delay: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )]..delay.first()'
+              master_item:
+                key: 'ora.query[ get_tablespaces_statistic ]'
+              tags:
+                - tag: application
+                  value: oracleDB
+                - tag: instance
+                  value: '{#SID}'
+                - tag: oracle
+                  value: standby
+              trigger_prototypes:
+                - uuid: 4ebfa6a5279042faa7ac7e02c7e761bd
+                  expression: 'last(/Oracle Database/OraclePhysicalStandbyDelay[ {#SID} ])>" {$ORACLE_MAXSTNDBDELAY}"'
+                  name: 'Oracle StndBy-DB delay ( {#SID} ) > {$ORACLE_MAXSTNDBDELAY}'
+                  priority: HIGH
+                  manual_close: 'YES'
+          graph_prototypes:
+            - uuid: f2d22be4cbf745f3a49926b96a12dfcf
+              name: '{#SID} Oracle Standby delay'
+              ymin_type_1: FIXED
+              graph_items:
+                - color: FF0000
+                  calc_fnc: ALL
+                  item:
+                    host: 'Oracle Database'
+                    key: 'OraclePhysicalStandbyDelay[ {#SID} ]'
+          master_item:
+            key: ora.query
+          lld_macro_paths:
+            - lld_macro: '{#SID}'
+              path: $.STNDBY_INSTANCE
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.data[:].PHYSICAL_STNDBY[:]'
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '[]'
+        - uuid: 2b24bdb9cbf14240ad5feefc0f3a05d7
+          name: OraDiscoverPrimaryTBS
+          type: DEPENDENT
+          key: OraDiscoverPrimaryTBS
+          delay: '0'
+          lifetime: 1d
+          item_prototypes:
+            - uuid: a699516f3e88454399a8c6f1fb955d85
+              name: 'Tablespace Free ( {#SID} - {#TABLESPACE} )'
+              type: DEPENDENT
+              key: 'TablespaceFree[ {#SID},{#TABLESPACE} ]'
+              delay: '0'
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )].info[:].tablespace[:]'
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.name == "{#TABLESPACE}" )].free.first()'
+              master_item:
+                key: 'ora.query[ get_tablespaces_statistic ]'
+              tags:
+                - tag: application
+                  value: oracleDB
+                - tag: instance
+                  value: '{#SID}'
+                - tag: oracle
+                  value: primary
+                - tag: tablespace
+                  value: '{#TABLESPACE}'
+            - uuid: 7950517f268e4fbf9f4117e52707b3a5
+              name: 'Tablespace Maxsize( {#SID} - {#TABLESPACE} )'
+              type: DEPENDENT
+              key: 'TablespaceMaxsize[ {#SID},{#TABLESPACE} ]'
+              delay: '0'
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )].info[:].tablespace[:]'
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.name == "{#TABLESPACE}" )].maxsize.first()'
+              master_item:
+                key: 'ora.query[ get_tablespaces_statistic ]'
+              tags:
+                - tag: application
+                  value: oracleDB
+                - tag: instance
+                  value: '{#SID}'
+                - tag: oracle
+                  value: primary
+                - tag: tablespace
+                  value: '{#TABLESPACE}'
+            - uuid: fb835dfd5a814c6980e3b55d180ccab2
+              name: 'Tablespace Total( {#SID} - {#TABLESPACE} )'
+              type: DEPENDENT
+              key: 'TablespaceTotal[ {#SID},{#TABLESPACE} ]'
+              delay: '0'
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )].info[:].tablespace[:]'
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.name == "{#TABLESPACE}" )].total.first()'
+              master_item:
+                key: 'ora.query[ get_tablespaces_statistic ]'
+              tags:
+                - tag: application
+                  value: oracleDB
+                - tag: instance
+                  value: '{#SID}'
+                - tag: oracle
+                  value: primary
+                - tag: tablespace
+                  value: '{#TABLESPACE}'
+            - uuid: 658d373f518349ca9e2f5f2bd9b95717
+              name: 'Tablespace Used( {#SID} - {#TABLESPACE} )'
+              type: DEPENDENT
+              key: 'TablespaceUsed[ {#SID},{#TABLESPACE} ]'
+              delay: '0'
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )].info[:].tablespace[:]'
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.name == "{#TABLESPACE}" )].used.first()'
+              master_item:
+                key: 'ora.query[ get_tablespaces_statistic ]'
+              tags:
+                - tag: application
+                  value: oracleDB
+                - tag: instance
+                  value: '{#SID}'
+                - tag: oracle
+                  value: primary
+                - tag: tablespace
+                  value: '{#TABLESPACE}'
+            - uuid: 6f0df082cc494311b324024de52d9d2e
+              name: 'Tablespace Utilization % in datafile ( {#SID} - {#TABLESPACE} )'
+              type: CALCULATED
+              key: 'TablespaceUtilizationPRCT[{#SID},{#TABLESPACE}]'
+              units: '%'
+              params: '( last(//TablespaceUsed[ {#SID},{#TABLESPACE} ]) / last(//TablespaceMaxsize[ {#SID},{#TABLESPACE} ]) ) * 100'
+              description: '% of space utilization by tablespace in DATAFILE ( include limited autoincrement of tablespaces )'
+              tags:
+                - tag: application
+                  value: oracleDB
+                - tag: instance
+                  value: '{#SID}'
+                - tag: oracle
+                  value: primary
+                - tag: tablespace
+                  value: '{#TABLESPACE}'
+              trigger_prototypes:
+                - uuid: 0199b0ccf14b4e66bdaf8b4c3d9a2664
+                  expression: '100 - last(/Oracle Database/TablespaceUtilizationPRCT[{#SID},{#TABLESPACE}])<{$ORACLE.TBS.MINIMAL:"{#SID}_{#TABLESPACE}"}'
+                  name: '{#SID} Oracle tablespace {#TABLESPACE} high utilization'
+                  priority: HIGH
+            - uuid: 19b1345570f44369a31d3538af4090ef
+              name: 'Tablespace Utilization %( {#SID} - {#TABLESPACE} )'
+              type: DEPENDENT
+              key: 'TablespaceUtilization[ {#SID},{#TABLESPACE} ]'
+              delay: '0'
+              value_type: FLOAT
+              units: '%'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )].info[:].tablespace[:]'
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.name == "{#TABLESPACE}" )].utilize.first()'
+              master_item:
+                key: 'ora.query[ get_tablespaces_statistic ]'
+              tags:
+                - tag: application
+                  value: oracleDB
+                - tag: instance
+                  value: '{#SID}'
+                - tag: oracle
+                  value: primary
+                - tag: tablespace
+                  value: '{#TABLESPACE}'
+          graph_prototypes:
+            - uuid: 9d27cfd33afc4eeebc912d7fc3c5b7a4
+              name: '{#SID} Oracle Tablespace Max usage( {#TABLESPACE} )'
+              graph_items:
+                - color: F63100
+                  yaxisside: RIGHT
+                  calc_fnc: ALL
+                  item:
+                    host: 'Oracle Database'
+                    key: 'TablespaceMaxsize[ {#SID},{#TABLESPACE} ]'
+                - sortorder: '1'
+                  color: 199C0D
+                  yaxisside: RIGHT
+                  calc_fnc: ALL
+                  item:
+                    host: 'Oracle Database'
+                    key: 'TablespaceUsed[ {#SID},{#TABLESPACE} ]'
+                - sortorder: '2'
+                  color: 2774A4
+                  calc_fnc: ALL
+                  item:
+                    host: 'Oracle Database'
+                    key: 'TablespaceUtilizationPRCT[{#SID},{#TABLESPACE}]'
+            - uuid: 835c7b3e2f3d48839b5d4b57edf69eab
+              name: '{#SID} Oracle Tablespace Usage ( {#TABLESPACE} )'
+              ymin_type_1: FIXED
+              graph_items:
+                - color: FF0000
+                  yaxisside: RIGHT
+                  calc_fnc: ALL
+                  item:
+                    host: 'Oracle Database'
+                    key: 'TablespaceTotal[ {#SID},{#TABLESPACE} ]'
+                - sortorder: '1'
+                  color: 199C0D
+                  yaxisside: RIGHT
+                  calc_fnc: ALL
+                  item:
+                    host: 'Oracle Database'
+                    key: 'TablespaceUsed[ {#SID},{#TABLESPACE} ]'
+          master_item:
+            key: ora.query
+          lld_macro_paths:
+            - lld_macro: '{#SID}'
+              path: $.PRIMARY_INSTANCE
+            - lld_macro: '{#TABLESPACE}'
+              path: $.TABLESPACE
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.data[:].TBS[:]'
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '[]'
+          overrides:
+            - name: 'Item no discover when it no depend from tablespace'
+              step: '1'
+              filter:
+                conditions:
+                  - macro: '{#TABLESPACE}'
+                    value: ^SYSTEM$
+                    operator: NOT_MATCHES_REGEX
+                    formulaid: A
+              operations:
+                - operationobject: ITEM_PROTOTYPE
+                  operator: LIKE
+                  value: 'get information'
+                  discover: NO_DISCOVER
+                - operationobject: ITEM_PROTOTYPE
+                  operator: LIKE
+                  value: ora.SIDgetstat
+                  discover: NO_DISCOVER
+                - operationobject: ITEM_PROTOTYPE
+                  operator: LIKE
+                  value: OraclePimaryDBStatus
+                  discover: NO_DISCOVER
+                - operationobject: ITEM_PROTOTYPE
+                  operator: LIKE
+                  value: 'Oracle Pimary DB Status'
+                  discover: NO_DISCOVER
+        - uuid: 59f43482c92e430384975eb3aee4213e
+          name: OraDiscoveryArchlogDest
+          type: DEPENDENT
+          key: OraDiscoveryArchlogDest
+          delay: '0'
+          lifetime: 1d
+          item_prototypes:
+            - uuid: 2ec4b74a8ee34012a2d4a1d6c8bb5dd4
+              name: 'Oracle Log destination {#SID}: "{#LOG_DEST}" compression'
+              type: DEPENDENT
+              key: 'OracleLogDestCompression[{#SID},{#LOG_DEST}]'
+              delay: '0'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.[?(@.SID == "{#SID}" )].info[:]'
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.dest_name == "{#LOG_DEST}" )].compression.first()'
+              master_item:
+                key: 'ora.query[ get_destination_info ]'
+              tags:
+                - tag: application
+                  value: 'oracle log destination'
+                - tag: instance
+                  value: '{#SID}'
+            - uuid: 89bd8bbfcd074f1590b5f2de6c7ae854
+              name: 'Oracle Log destination {#SID}: "{#LOG_DEST}" destination'
+              type: DEPENDENT
+              key: 'OracleLogDestDest[{#SID},{#LOG_DEST}]'
+              delay: '0'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.[?(@.SID == "{#SID}" )].info[:]'
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.dest_name == "{#LOG_DEST}" )].destination.first()'
+              master_item:
+                key: 'ora.query[ get_destination_info ]'
+              tags:
+                - tag: application
+                  value: 'oracle log destination'
+                - tag: instance
+                  value: '{#SID}'
+            - uuid: b2feb6f341b64c11b8b0b9d275f99217
+              name: 'Oracle Log destination {#SID}: "{#LOG_DEST}" encryption'
+              type: DEPENDENT
+              key: 'OracleLogDestEncryption[{#SID},{#LOG_DEST}]'
+              delay: '0'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.[?(@.SID == "{#SID}" )].info[:]'
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.dest_name == "{#LOG_DEST}" )].encryption.first()'
+              master_item:
+                key: 'ora.query[ get_destination_info ]'
+              tags:
+                - tag: application
+                  value: 'oracle log destination'
+                - tag: instance
+                  value: '{#SID}'
+            - uuid: 14a13afdb288428caea740df9276644e
+              name: 'Oracle Log destination {#SID}: "{#LOG_DEST}" mode'
+              type: DEPENDENT
+              key: 'OracleLogDestMode[{#SID},{#LOG_DEST}]'
+              delay: '0'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.[?(@.SID == "{#SID}" )].info[:]'
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.dest_name == "{#LOG_DEST}" )].transmit_mode.first()'
+              master_item:
+                key: 'ora.query[ get_destination_info ]'
+              tags:
+                - tag: application
+                  value: 'oracle log destination'
+                - tag: instance
+                  value: '{#SID}'
+            - uuid: 8160b7f6e65a40c9921ce7981acd5529
+              name: 'Oracle Log destination {#SID}: "{#LOG_DEST}" valid role'
+              type: DEPENDENT
+              key: 'OracleLogDestRole[{#SID},{#LOG_DEST}]'
+              delay: '0'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.[?(@.SID == "{#SID}" )].info[:]'
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.dest_name == "{#LOG_DEST}" )].valid_role.first()'
+              master_item:
+                key: 'ora.query[ get_destination_info ]'
+              tags:
+                - tag: application
+                  value: 'oracle log destination'
+                - tag: instance
+                  value: '{#SID}'
+            - uuid: 0e078c7a7d67464cbe2816aca09f7f38
+              name: 'Oracle Log destination {#SID}: "{#LOG_DEST}" status'
+              type: DEPENDENT
+              key: 'OracleLogDestStatus[{#SID},{#LOG_DEST}]'
+              delay: '0'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.[?(@.SID == "{#SID}" )].info[:]'
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.dest_name == "{#LOG_DEST}" )].status.first()'
+              master_item:
+                key: 'ora.query[ get_destination_info ]'
+              tags:
+                - tag: application
+                  value: 'oracle log destination'
+                - tag: instance
+                  value: '{#SID}'
+              trigger_prototypes:
+                - uuid: b4158652d9624b35950ad51047eea7bb
+                  expression: 'last(/Oracle Database/OracleLogDestStatus[{#SID},{#LOG_DEST}])<>"VALID"'
+                  name: 'Oracle {#SID} Log destination "{#LOG_DEST}" status not valid'
+                  status: DISABLED
+                  manual_close: 'YES'
+            - uuid: 66c723ff150844ff834925834eb928da
+              name: 'Oracle Log destination {#SID}: "{#LOG_DEST}" target'
+              type: DEPENDENT
+              key: 'OracleLogDestTarget[{#SID},{#LOG_DEST}]'
+              delay: '0'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.[?(@.SID == "{#SID}" )].info[:]'
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.dest_name == "{#LOG_DEST}" )].target.first()'
+              master_item:
+                key: 'ora.query[ get_destination_info ]'
+              tags:
+                - tag: application
+                  value: 'oracle log destination'
+                - tag: instance
+                  value: '{#SID}'
+          master_item:
+            key: 'ora.query[ get_destination_info ]'
+          lld_macro_paths:
+            - lld_macro: '{#LOG_DEST}'
+              path: $.dest_name
+            - lld_macro: '{#SID}'
+              path: $.SID
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$..info[:].archive_dest[:]'
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '[]'
+        - uuid: c5d24768269a4f1d9aed06239a3c554e
+          name: OraFRAdiscovery
+          type: DEPENDENT
+          key: OraFRAdiscovery
+          delay: '0'
+          lifetime: 1d
+          item_prototypes:
+            - uuid: eda5932fd70846699c50ba2a0f4f1310
+              name: 'Oracle FRA destination ( {#SID} )'
+              type: DEPENDENT
+              key: 'oracleFRAdestination[{#SID}]'
+              delay: '0'
+              trends: '0'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )].info[:].FRA[:].FRA_dest.first()'
+              master_item:
+                key: 'ora.query[ get_recovery_info ]'
+              tags:
+                - tag: application
+                  value: oracleFRA
+                - tag: instance
+                  value: '{#SID}'
+            - uuid: a25fe505ba7e464abaf15774e5bbcce5
+              name: 'Oracle FRA free % ( {#SID} )'
+              type: CALCULATED
+              key: 'oracleFRAfreePercent[ {#SID} ]'
+              value_type: FLOAT
+              units: '%'
+              params: '(last(//oracleFRAlimit[{#SID}]) - last(//oracleFRAused[{#SID}]))/last(//oracleFRAlimit[{#SID}])*100'
+              tags:
+                - tag: application
+                  value: oracleFRA
+                - tag: instance
+                  value: '{#SID}'
+              trigger_prototypes:
+                - uuid: 271e5636c2274163ab5e94a5ef94e627
+                  expression: 'last(/Oracle Database/oracleFRAfreePercent[ {#SID} ])<{$FRA_MINIMAL_PRCT}'
+                  name: '{#SID} FRA usage critical low ( < {$FRA_MINIMAL_PRCT} )'
+                  priority: HIGH
+                  manual_close: 'YES'
+            - uuid: eb6012532c094451adad0a7f054bfd48
+              name: 'Oracle FRA free( {#SID} )'
+              type: CALCULATED
+              key: 'oracleFRAfree[ {#SID} ]'
+              units: B
+              params: 'last(//oracleFRAlimit[{#SID}]) - last(//oracleFRAused[{#SID}])'
+              tags:
+                - tag: application
+                  value: oracleFRA
+                - tag: instance
+                  value: '{#SID}'
+            - uuid: 424424e779e24776ab99326504138fcc
+              name: 'Oracle FRA limit ( {#SID} )'
+              type: DEPENDENT
+              key: 'oracleFRAlimit[{#SID}]'
+              delay: '0'
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )].info[:].FRA[:].FRA_limit.first()'
+              master_item:
+                key: 'ora.query[ get_recovery_info ]'
+              tags:
+                - tag: application
+                  value: oracleFRA
+                - tag: instance
+                  value: '{#SID}'
+            - uuid: 2462e3aa3bd941d28e014302861085a2
+              name: 'Oracle FRA used ( {#SID} )'
+              type: DEPENDENT
+              key: 'oracleFRAused[{#SID}]'
+              delay: '0'
+              units: b
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.SID == "{#SID}" )].info[:].FRA[:].FRA_used.first()'
+              master_item:
+                key: 'ora.query[ get_recovery_info ]'
+              tags:
+                - tag: application
+                  value: oracleFRA
+                - tag: instance
+                  value: '{#SID}'
+          graph_prototypes:
+            - uuid: d95ad0a78fb849f68dfc6c34f41bebdb
+              name: '{#SID} Usage Oracle FRA'
+              ymin_type_1: FIXED
+              graph_items:
+                - color: FF0000
+                  yaxisside: RIGHT
+                  calc_fnc: ALL
+                  item:
+                    host: 'Oracle Database'
+                    key: 'oracleFRAlimit[{#SID}]'
+                - sortorder: '1'
+                  color: 00FF00
+                  yaxisside: RIGHT
+                  calc_fnc: ALL
+                  item:
+                    host: 'Oracle Database'
+                    key: 'oracleFRAfree[ {#SID} ]'
+            - uuid: a4c39fec83394eaa85a058f0a74da5a4
+              name: '{#SID} Usage Oracle FRA %'
+              ymin_type_1: FIXED
+              graph_items:
+                - color: 199C0D
+                  yaxisside: RIGHT
+                  calc_fnc: ALL
+                  item:
+                    host: 'Oracle Database'
+                    key: 'oracleFRAfreePercent[ {#SID} ]'
+          master_item:
+            key: 'ora.query[ get_recovery_info ]'
+          lld_macro_paths:
+            - lld_macro: '{#SID}'
+              path: $.SID
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[:]'
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '[]'
+      tags:
+        - tag: class
+          value: database
+        - tag: target
+          value: oracle
+      macros:
+        - macro: '{$ADDCONF}'
+          value: oracle
+          description: 'for install additional config to remote host'
+        - macro: '{$FRA_MINIMAL_PRCT}'
+          value: '15'
+          description: 'minimal FRA % usage'
+        - macro: '{$ORACLE.TBS.MINIMAL}'
+          value: '1'
+          description: 'minimal % free tablespase'
+        - macro: '{$ORACLE_MAXSTNDBDELAY}'
+          value: '600'
+          description: 'maximum delay primary-standby in minutes'
+      dashboards:
+        - uuid: fc3bda9301a74665ac28cab51578c2a1
+          name: 'Oracle space usage'
+          pages:
+            - widgets:
+                - type: graphprototype
+                  name: 'Oracle Tablespace Max usage'
+                  width: '22'
+                  height: '7'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid
+                      value:
+                        host: 'Oracle Database'
+                        name: '{#SID} Oracle Tablespace Max usage( {#TABLESPACE} )'
+                - type: graphprototype
+                  name: 'Osage Oracle FRA'
+                  'y': '7'
+                  width: '22'
+                  height: '6'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid
+                      value:
+                        host: 'Oracle Database'
+                        name: '{#SID} Usage Oracle FRA %'
+                - type: graphprototype
+                  name: 'Oracle Tablespace Usage'
+                  'y': '13'
+                  width: '22'
+                  height: '7'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid
+                      value:
+                        host: 'Oracle Database'
+                        name: '{#SID} Oracle Tablespace Usage ( {#TABLESPACE} )'
+                - type: graphprototype
+                  name: 'Oracle Standby delay'
+                  'y': '20'
+                  width: '22'
+                  height: '6'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid
+                      value:
+                        host: 'Oracle Database'
+                        name: '{#SID} Oracle Standby delay'
+      valuemaps:
+        - uuid: f87757d52fcf4f22bc5e3ef038e8e50e
+          name: 'service availability'
+          mappings:
+            - value: '0'
+              newvalue: 'not available'
+            - value: '1'
+              newvalue: available
+            - value: '2'
+              newvalue: unknown
+        - uuid: 0c4a107f78914e848582fcc5cafa5f46
+          name: 'status apply'
+          mappings:
+            - value: '1'
+              newvalue: apply
+            - value: '0'
+              newvalue: 'no apply'

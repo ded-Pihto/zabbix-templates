@@ -2,10 +2,10 @@
 # 
 # Script for the check a space in ORACLE +ASM resource
 # for zabbix agent
-# by Khenkin D. 04/01/2022
+# by Khenkin D. 28.10.2023
 #
 # run only for user grid
-# v.1.9
+# v.1.13
 #
 if ! [ $USER == "grid" ]; then
   echo Use this script only from user \"grid\" for Oracle ASM+
@@ -51,6 +51,7 @@ EOF`
 
 FuncQueryASMGroup() {
 IFS=' ' read -r -a OUTSTR <<<`asmcmd lsdg 2>/dev/null | grep State`
+
 for column_num in  "${!OUTSTR[@]}"
 do
     case ${OUTSTR[$column_num]} in
@@ -62,15 +63,15 @@ do
     esac
 done
 
-IFS='/' read -r -a OUTSTR <<<`asmcmd lsdg --suppressheader 2>/dev/null`
+readarray OUTSTR <<<`asmcmd lsdg --suppressheader 2>/dev/null`
 
 echo '{'
 echo '"data":['
 FLG=0
 for asmGroupInfo in  "${OUTSTR[@]}"
 do
+    IFS='/' read -r -a asmGroupInfo <<< `echo $asmGroupInfo`
     ASM_GROUP_NAME=`echo $asmGroupInfo | awk -v position=$NAME_INDEX '{printf $position }'`
-
 
     if [ $FLG = 0 ];then
 	FLG=1
@@ -85,8 +86,26 @@ echo -e '\n  ]'
 echo -e '}'
 }
 
+
+# main functional
+
+# qwery database instances & tablespaces
+list_SID=`ps -ef | grep pmon_+ASM | grep -v grep | grep -v sed | awk '{print $8}' | sed "s/asm_pmon_//g"`
+if [ "$list_SID+" == "+" ]; then
+    case $1 in
+	discovery)
+	    echo []
+	    ;;
+	*)
+	    echo 0
+	    ;;
+    esac
+    exit 0
+fi
+
+
 case $1 in
-    queryASM)
+    discovery)
 	FuncQueryASMGroup
 	OUTSTR=""
 	;;
@@ -110,9 +129,31 @@ case $1 in
 	FuncGetASMwithCandidate
 	OUTSTR=$TOTAL_WITH_CANDIDATE
 	;;
+    read)
+	SumBytes=0
+	if ! [ "$2" == "" ]; then
+	    tmpstr=`asmcmd iostat -G $2 --suppressheader 2>/dev/null`
+	    readarray -t RWBytesTable <<<"$tmpstr"
+	fi
+	for RWbytes in "${RWBytesTable[@]}"; do
+	    SumBytes=$(($SumBytes +   `echo $RWbytes | awk '{print $3}'`))
+        done
+        echo $SumBytes
+	;;
+    write)
+	SumBytes=0
+	if ! [ "$2" == "" ]; then
+	    tmpstr=`asmcmd iostat -G $2 --suppressheader 2>/dev/null`
+	    readarray -t RWBytesTable <<<"$tmpstr"
+	fi
+	for RWbytes in "${RWBytesTable[@]}"; do
+	    SumBytes=$(($SumBytes +   `echo $RWbytes | awk '{print $4}'`))
+        done
+        echo $SumBytes
+	;;
     *)
 	echo "Run as grid user only"
-	echo "Must be $0 queryASM|free|pfree|used|total|reserv [ASMgroup]"
+	echo "Must be $0 queryASM|free|pfree|used|total|reserv|read|write [ASMgroup]"
 	OUTSTR=""
 	;;
 esac

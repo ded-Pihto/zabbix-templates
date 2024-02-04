@@ -1,0 +1,237 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: 748ad4d098d447d492bb935c907f652f
+      name: Templates/Databases
+  templates:
+    - uuid: e3493d714d0b4c0bb157f1cd3e984c8a
+      template: 'Oracle ASM'
+      name: 'Oracle ASM'
+      description: |
+        Use special custom scripts for Zabbix Agent
+        
+        by D.Khenkin
+      groups:
+        - name: Templates/Databases
+      items:
+        - uuid: 2883b0d8850244d4a8968df4393b8259
+          name: OracleASM(reserv)
+          type: ZABBIX_ACTIVE
+          key: 'custom.vfs.asm.query[reserv]'
+          delay: 30m
+          units: b
+          description: 'Total space in +ASM with candidate'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '1024'
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: MULTIPLIER
+              parameters:
+                - '1024'
+          tags:
+            - tag: application
+              value: oracleASM
+      discovery_rules:
+        - uuid: e21756f43c39470e8a741fe90a9f1947
+          name: ASM_Groups
+          key: 'custom.vfs.asm.query[discovery]'
+          delay: 30m
+          filter:
+            conditions:
+              - macro: '{#ASM_GROUP}'
+                value: '^.*$'
+                formulaid: A
+          lifetime: 10d
+          item_prototypes:
+            - uuid: 2b518475d6f04cbfa5af2a8cf788d915
+              name: '{#ASM_GROUP} OracleASM(free)'
+              type: ZABBIX_ACTIVE
+              key: 'custom.vfs.asm.query[free,{#ASM_GROUP}]'
+              units: b
+              preprocessing:
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              tags:
+                - tag: application
+                  value: oracleASM
+            - uuid: 291837a64f184f688a15d6a272dd0a64
+              name: '{#ASM_GROUP} OracleASM(free).percentage'
+              type: ZABBIX_ACTIVE
+              key: 'custom.vfs.asm.query[pfree,{#ASM_GROUP}]'
+              value_type: FLOAT
+              units: '%'
+              tags:
+                - tag: application
+                  value: oracleASM
+              trigger_prototypes:
+                - uuid: 1cbca96cbe274dd4846f1bbe6103a5b7
+                  expression: 'last(/Oracle ASM/custom.vfs.asm.query[pfree,{#ASM_GROUP}])<{$ASMMINIMAL}'
+                  name: '{#ASM_GROUP} Free space is less than {$ASMMINIMAL}% on ASM'
+                  priority: HIGH
+                  description: |
+                    Alert if free space on +ASM GROUP less the value in {$ASMMINIMAL} %
+                    ( default 1% )
+                  manual_close: 'YES'
+            - uuid: 94879e3ade5f4e4b90c1abc30e7edf9f
+              name: '{#ASM_GROUP} IO OracleASM Read'
+              type: ZABBIX_ACTIVE
+              key: 'custom.vfs.asm.query[read,{#ASM_GROUP}]'
+              value_type: FLOAT
+              units: b/s
+              description: 'Oracle ASM+ read'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              tags:
+                - tag: application
+                  value: oracleASM
+            - uuid: 144c313fa60848e3b32b2809c1e94289
+              name: '{#ASM_GROUP} OracleASM(total)'
+              type: ZABBIX_ACTIVE
+              key: 'custom.vfs.asm.query[total,{#ASM_GROUP}]'
+              units: b
+              preprocessing:
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              tags:
+                - tag: application
+                  value: oracleASM
+            - uuid: d8b66336869e49bfa0544795781da2e1
+              name: '{#ASM_GROUP} OracleASM(used)'
+              type: ZABBIX_ACTIVE
+              key: 'custom.vfs.asm.query[used,{#ASM_GROUP}]'
+              units: b
+              preprocessing:
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1000'
+              tags:
+                - tag: application
+                  value: oracleASM
+            - uuid: 117d344508a44007a65a457f55bd5468
+              name: '{#ASM_GROUP} IO OracleASM Write'
+              type: ZABBIX_ACTIVE
+              key: 'custom.vfs.asm.query[write,{#ASM_GROUP}]'
+              value_type: FLOAT
+              units: b/s
+              description: 'Oracle ASM+ read'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              tags:
+                - tag: application
+                  value: oracleASM
+          graph_prototypes:
+            - uuid: fd215e5e9c2541efa8f5fd926c09c21f
+              name: '{#ASM_GROUP} FreeSpace(ASM)%'
+              graph_items:
+                - sortorder: '1'
+                  color: 1A7C11
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.query[pfree,{#ASM_GROUP}]'
+            - uuid: 87806488ccd447a5a03d57f6432a0062
+              name: '{#ASM_GROUP} IO OracleASM Read/Write'
+              graph_items:
+                - sortorder: '1'
+                  color: 1A7C11
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.query[read,{#ASM_GROUP}]'
+                - sortorder: '2'
+                  color: F63100
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.query[write,{#ASM_GROUP}]'
+            - uuid: 4da650d59fc8428b83c6f1716774aa2c
+              name: '{#ASM_GROUP} TotalSpace(ASM)'
+              graph_items:
+                - sortorder: '1'
+                  color: 1A7C11
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.query[free,{#ASM_GROUP}]'
+                - sortorder: '2'
+                  color: F63100
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.query[used,{#ASM_GROUP}]'
+                - sortorder: '3'
+                  color: 2774A4
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.query[total,{#ASM_GROUP}]'
+                - sortorder: '4'
+                  color: 090C0E
+                  item:
+                    host: 'Oracle ASM'
+                    key: 'custom.vfs.asm.query[reserv]'
+      tags:
+        - tag: class
+          value: database
+        - tag: target
+          value: oracle
+      macros:
+        - macro: '{$ADDCONF}'
+          value: oracle
+          description: 'for install additional config to remote host'
+        - macro: '{$ASMMINIMAL}'
+          value: '1'
+          description: 'percentage of free on ASM GROUP'
+      dashboards:
+        - uuid: 9a72a08421f0411193016752cd8ef010
+          name: 'ASM storage'
+          pages:
+            - widgets:
+                - type: graphprototype
+                  name: 'Oracle ASM: TotalSpace(ASM)'
+                  width: '16'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid
+                      value:
+                        host: 'Oracle ASM'
+                        name: '{#ASM_GROUP} TotalSpace(ASM)'
+                - type: graphprototype
+                  name: 'Oracle ASM: IO OracleASM Read/Write'
+                  'y': '5'
+                  width: '16'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: columns
+                      value: '1'
+                    - type: GRAPH_PROTOTYPE
+                      name: graphid
+                      value:
+                        host: 'Oracle ASM'
+                        name: '{#ASM_GROUP} IO OracleASM Read/Write'
+  graphs:
+    - uuid: 3a702ce908034bfc9f0bb9e519ea4ee0
+      name: TotalSpace(ASM)
+      graph_items:
+        - sortorder: '3'
+          color: '000000'
+          calc_fnc: ALL
+          item:
+            host: 'Oracle ASM'
+            key: 'custom.vfs.asm.query[reserv]'
